@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Organizer - Win98</title>
+    <title>Win98 Cloud Organizer</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <style>
         :root {
             --win-grey: #c0c0c0;
@@ -12,7 +14,7 @@
             --win-light: #ffffff;
             --win-blue: #000080;
             --desktop-teal: #008080;
-            --cream-bg: #fffbf0; /* Cream paper look */
+            --cream-bg: #fffbf0;
             --font-main: 'Tahoma', 'Verdana', sans-serif;
         }
 
@@ -24,14 +26,14 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            overflow: hidden; /* Prevent body scroll */
+            overflow: hidden;
         }
 
-        /* --- Windows 98 Window Frame Style --- */
+        /* --- Windows 98 Style Classes --- */
         .window {
             background-color: var(--win-grey);
             padding: 3px;
-            box-shadow: 1px 1px 0 #000; /* Drop shadow */
+            box-shadow: 1px 1px 0 #000;
             border-top: 2px solid var(--win-light);
             border-left: 2px solid var(--win-light);
             border-right: 2px solid var(--win-darker);
@@ -56,32 +58,11 @@
             font-weight: bold;
             font-size: 13px;
             letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .title-controls button {
-            width: 16px;
-            height: 14px;
-            font-size: 9px;
-            font-weight: bold;
-            line-height: 10px;
-            margin-left: 2px;
-            padding: 0;
-            background: var(--win-grey);
-            border-top: 1px solid var(--win-light);
-            border-left: 1px solid var(--win-light);
-            border-right: 1px solid var(--win-darker);
-            border-bottom: 1px solid var(--win-darker);
-            box-shadow: none;
-        }
-        
-        .title-controls button:active {
-            border-top: 1px solid var(--win-darker);
-            border-left: 1px solid var(--win-darker);
-            border-right: 1px solid var(--win-light);
-            border-bottom: 1px solid var(--win-light);
-        }
-
-        /* --- Standard Win98 Button --- */
         .win-btn {
             background: var(--win-grey);
             border-top: 1px solid var(--win-light);
@@ -93,6 +74,7 @@
             font-family: var(--font-main);
             font-size: 11px;
             cursor: pointer;
+            min-width: 20px;
         }
 
         .win-btn:active {
@@ -104,9 +86,31 @@
             transform: translate(1px, 1px);
         }
 
-        /* --- Main Content Area --- */
-        .window-body {
-            padding: 10px;
+        .window-body { padding: 5px; }
+
+        /* --- Cloud Status Bar --- */
+        .status-panel {
+            margin-bottom: 8px;
+            display: flex;
+            gap: 5px;
+            padding: 4px;
+            border: 1px solid var(--win-dark);
+            border-bottom: 1px solid var(--win-light);
+            border-right: 1px solid var(--win-light);
+            align-items: center;
+        }
+        
+        #auth-status { font-size: 11px; flex-grow: 1; }
+        .cloud-btn { width: 80px; }
+
+        /* --- Calendar Grid --- */
+        .sunken-panel {
+            border-top: 2px solid var(--win-dark);
+            border-left: 2px solid var(--win-dark);
+            border-right: 2px solid var(--win-light);
+            border-bottom: 2px solid var(--win-light);
+            background: var(--cream-bg);
+            padding: 5px;
         }
 
         .calendar-controls {
@@ -114,23 +118,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
-            background: var(--win-grey);
         }
-        
-        .month-label {
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        /* --- The Calendar Grid --- */
-        .sunken-panel {
-            border-top: 2px solid var(--win-dark);
-            border-left: 2px solid var(--win-dark);
-            border-right: 2px solid var(--win-light);
-            border-bottom: 2px solid var(--win-light);
-            background: var(--cream-bg); /* The "Cream" part */
-            padding: 5px;
-        }
+        .month-label { font-weight: bold; font-size: 14px; }
 
         .weekdays {
             display: grid;
@@ -151,7 +140,7 @@
 
         .day {
             min-height: 80px;
-            border: 1px solid #e0dec0; /* Faint border for cream look */
+            border: 1px solid #e0dec0;
             padding: 2px;
             cursor: pointer;
             position: relative;
@@ -161,64 +150,33 @@
             flex-direction: column;
         }
 
-        .day:hover {
-            background-color: #fff;
-            border: 1px solid var(--win-blue);
-        }
+        .day:hover { background-color: #fff; border: 1px solid var(--win-blue); }
+        .day-number { align-self: flex-end; color: #666; margin-bottom: 2px; }
+        .day-content { font-size: 11px; word-wrap: break-word; flex-grow: 1; padding: 2px; }
+        .current-day { background-color: #ffffff; border: 1px dotted var(--win-darker); }
 
-        .day-number {
-            align-self: flex-end;
-            color: #666;
-            margin-bottom: 2px;
-        }
-
-        .day-content {
-            font-size: 11px;
-            word-wrap: break-word;
-            flex-grow: 1;
-            padding: 2px;
-        }
-
-        .current-day {
-            background-color: #ffffff;
-            border: 1px dotted var(--win-darker);
-        }
-
-        /* --- Modal (Dialog Box) --- */
+        /* --- Modal --- */
         .modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0); /* No dimming in Win98 usually, but keeps focus */
             z-index: 100;
             justify-content: center;
             align-items: center;
         }
-
         .modal-window {
             width: 300px;
-            /* Reusing window styles */
             background-color: var(--win-grey);
             padding: 3px;
             box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
-            border-top: 2px solid var(--win-light);
-            border-left: 2px solid var(--win-light);
+            border: 2px solid var(--win-light);
             border-right: 2px solid var(--win-darker);
             border-bottom: 2px solid var(--win-darker);
         }
-
-        .modal-body {
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
         textarea {
             width: 100%;
             height: 100px;
-            border-top: 2px solid var(--win-dark);
-            border-left: 2px solid var(--win-dark);
+            border: 2px solid var(--win-dark);
             border-right: 2px solid var(--win-light);
             border-bottom: 2px solid var(--win-light);
             font-family: var(--font-main);
@@ -228,47 +186,15 @@
             resize: none;
             outline: none;
         }
-
-        /* Color Palette Win98 Style */
-        .fieldset {
-            border: 1px solid var(--win-dark);
-            padding: 5px;
-            margin-top: 5px;
-        }
-        .fieldset legend {
-            font-size: 11px;
-            margin-left: 5px;
-        }
-
-        .color-options {
-            display: flex;
-            gap: 5px;
-        }
-
+        .color-options { display: flex; gap: 5px; padding: 5px 0;}
         .color-swatch {
-            width: 20px;
-            height: 20px;
-            border-top: 2px solid var(--win-dark);
-            border-left: 2px solid var(--win-dark);
+            width: 20px; height: 20px;
+            border: 2px solid var(--win-dark);
             border-right: 2px solid var(--win-light);
             border-bottom: 2px solid var(--win-light);
             cursor: pointer;
         }
-        .color-swatch.selected {
-            border-top: 2px solid var(--win-darker);
-            border-left: 2px solid var(--win-darker);
-            border-right: 2px solid white;
-            border-bottom: 2px solid white;
-            outline: 1px dotted black;
-            outline-offset: 2px;
-        }
-
-        .dialog-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 5px;
-            margin-top: 10px;
-        }
+        .color-swatch.selected { border: 2px solid black; }
 
     </style>
 </head>
@@ -276,15 +202,21 @@
 
     <div class="window">
         <div class="title-bar">
-            <div class="title-text"><img src="https://win98icons.alexmeub.com/icons/png/calendar-1.png" width="13" style="vertical-align:middle; margin-right:5px;">Desktop Organizer</div>
-            <div class="title-controls">
-                <button>_</button>
-                <button>□</button>
-                <button onclick="alert('Cannot close system process.')">X</button>
+            <div class="title-text">
+                <img src="https://win98icons.alexmeub.com/icons/png/calendar-1.png" width="13">
+                Desktop Organizer - Connected
             </div>
+            <div class="win-btn" style="padding:0 4px; font-weight:bold;">X</div>
         </div>
 
         <div class="window-body">
+            <div class="status-panel">
+                <div id="auth-status">System Offline. Login to Sync.</div>
+                <button id="authBtn" class="win-btn cloud-btn" onclick="handleAuthClick()">Log In</button>
+                <button id="syncBtn" class="win-btn cloud-btn" onclick="syncData()" style="display:none;">Save Drive</button>
+                <button id="loadBtn" class="win-btn cloud-btn" onclick="loadFromDrive()" style="display:none;">Load Drive</button>
+            </div>
+
             <div class="calendar-controls">
                 <button class="win-btn" id="prevBtn">◄</button>
                 <div class="month-label" id="monthYear">...</div>
@@ -295,36 +227,27 @@
                 <div class="weekdays">
                     <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
                 </div>
-                <div class="days" id="daysContainer">
-                    </div>
-            </div>
-            
-            <div style="margin-top:5px; font-size:10px; color:#666; border-top:1px solid #808080; padding-top:2px;">
-                Ready.
+                <div class="days" id="daysContainer"></div>
             </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="editModal">
         <div class="modal-window">
-            <div class="title-bar">
+            <div class="title-bar" style="margin-bottom:5px;">
                 <div class="title-text">Edit Entry</div>
-                <div class="title-controls">
-                    <button onclick="closeModal()">X</button>
-                </div>
+                <button class="win-btn" onclick="closeModal()">X</button>
             </div>
-            <div class="modal-body">
-                <div style="font-size:11px;" id="modalDateLabel">Date: --</div>
-                
-                <textarea id="todoInput" placeholder="Type here..."></textarea>
-
-                <fieldset class="fieldset">
-                    <legend>Highlight Color</legend>
-                    <div class="color-options">
-                        <div class="color-swatch" style="background:#000000; display:none;" onclick="pickColor('none')"></div> <div class="color-swatch" style="background:#ffcccc" onclick="pickColor('#ffcccc')"></div> <div class="color-swatch" style="background:#ccffcc" onclick="pickColor('#ccffcc')"></div> <div class="color-swatch" style="background:#ccccff" onclick="pickColor('#ccccff')"></div> <div class="color-swatch" style="background:#ffffcc" onclick="pickColor('#ffffcc')"></div> <div class="color-swatch" style="background:#e0e0e0" onclick="pickColor('#e0e0e0')"></div> </div>
-                </fieldset>
-
-                <div class="dialog-buttons">
+            <div style="padding:10px;">
+                <div id="modalDateLabel" style="margin-bottom:5px; font-size:11px;"></div>
+                <textarea id="todoInput"></textarea>
+                <div class="color-options">
+                    <div class="color-swatch" style="background:#ffcccc" onclick="pickColor('#ffcccc')"></div>
+                    <div class="color-swatch" style="background:#ccffcc" onclick="pickColor('#ccffcc')"></div>
+                    <div class="color-swatch" style="background:#ccccff" onclick="pickColor('#ccccff')"></div>
+                    <div class="color-swatch" style="background:#ffffcc" onclick="pickColor('#ffffcc')"></div>
+                    <div class="color-swatch" style="background:#e0e0e0" onclick="pickColor('none')"></div> </div>
+                <div style="text-align:right; margin-top:10px;">
                     <button class="win-btn" onclick="saveEntry()">OK</button>
                     <button class="win-btn" onclick="closeModal()">Cancel</button>
                 </div>
@@ -333,31 +256,216 @@
     </div>
 
     <script>
-        // --- State ---
+        // ==========================================
+        // CONFIGURATION - PASTE YOUR KEYS HERE
+        // ==========================================
+        const API_KEY = 'AIzaSyA1iG-C7qXnNDPELEi3mM8vuSGD1btArzg';
+        const CLIENT_ID = '537716789548-56s3mvpr5js4b0g3g05t01uun4pjoje1.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        // ==========================================
+
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SAVE_FILE_NAME = 'win98_calendar_data.json';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
         let currentDate = new Date();
         let selectedDayKey = null;
         let selectedColor = null;
         let calendarData = {};
 
-        // --- Elements ---
+        // --- DOM Elements ---
         const daysContainer = document.getElementById('daysContainer');
         const monthYearLabel = document.getElementById('monthYear');
         const modal = document.getElementById('editModal');
         const todoInput = document.getElementById('todoInput');
         const modalDateLabel = document.getElementById('modalDateLabel');
-        const swatches = document.querySelectorAll('.color-swatch');
+        const statusDiv = document.getElementById('auth-status');
+        const authBtn = document.getElementById('authBtn');
+        const syncBtn = document.getElementById('syncBtn');
+        const loadBtn = document.getElementById('loadBtn');
 
-        // --- Init ---
+        // --- 1. GOOGLE AUTH & DRIVE LOGIC ---
+
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                statusDiv.innerText = "System Ready. Please Log In.";
+            }
+        }
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                statusDiv.innerText = "Authenticated. Ready to Sync.";
+                authBtn.style.display = 'none';
+                syncBtn.style.display = 'inline-block';
+                loadBtn.style.display = 'inline-block';
+                // Try to auto load
+                await loadFromDrive(); 
+            };
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        // --- Drive: Save Logic ---
+        async function syncData() {
+            statusDiv.innerText = "Searching Drive...";
+            try {
+                // 1. Search for existing file
+                const response = await gapi.client.drive.files.list({
+                    q: `name = '${SAVE_FILE_NAME}' and trashed = false`,
+                    fields: 'files(id, name)',
+                });
+                
+                const files = response.result.files;
+                const fileContent = JSON.stringify(calendarData);
+                const fileMetadata = {
+                    'name': SAVE_FILE_NAME,
+                    'mimeType': 'application/json'
+                };
+
+                if (files && files.length > 0) {
+                    // Update existing
+                    statusDiv.innerText = "Overwriting Cloud Save...";
+                    const fileId = files[0].id;
+                    
+                    // Simple update using multipart/related is hard in pure JS client without libs
+                    // We will just use the standard REST upload method
+                    await updateFile(fileId, fileContent);
+                    statusDiv.innerText = "Save Complete!";
+                } else {
+                    // Create new
+                    statusDiv.innerText = "Creating New Save File...";
+                    await createFile(fileContent);
+                    statusDiv.innerText = "Save Complete!";
+                }
+
+                setTimeout(() => statusDiv.innerText = "Online.", 3000);
+
+            } catch (err) {
+                statusDiv.innerText = "Error: " + err.message;
+                console.error(err);
+            }
+        }
+
+        async function createFile(content) {
+            const boundary = '-------314159265358979323846';
+            const delimiter = "\r\n--" + boundary + "\r\n";
+            const close_delim = "\r\n--" + boundary + "--";
+
+            const contentType = 'application/json';
+            const metadata = {
+                'name': SAVE_FILE_NAME,
+                'mimeType': contentType
+            };
+
+            const multipartRequestBody =
+                delimiter +
+                'Content-Type: application/json\r\n\r\n' +
+                JSON.stringify(metadata) +
+                delimiter +
+                'Content-Type: ' + contentType + '\r\n\r\n' +
+                content +
+                close_delim;
+
+            const request = gapi.client.request({
+                'path': '/upload/drive/v3/files',
+                'method': 'POST',
+                'params': {'uploadType': 'multipart'},
+                'headers': {
+                    'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+                },
+                'body': multipartRequestBody});
+            
+            return request;
+        }
+
+        async function updateFile(fileId, content) {
+            // For update, we use PATCH
+             const request = gapi.client.request({
+                'path': '/upload/drive/v3/files/' + fileId,
+                'method': 'PATCH',
+                'params': {'uploadType': 'media'},
+                'body': content
+            });
+            return request;
+        }
+
+        // --- Drive: Load Logic ---
+        async function loadFromDrive() {
+            statusDiv.innerText = "Checking Drive for saves...";
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: `name = '${SAVE_FILE_NAME}' and trashed = false`,
+                    fields: 'files(id, name)',
+                });
+                const files = response.result.files;
+
+                if (files && files.length > 0) {
+                    const fileId = files[0].id;
+                    statusDiv.innerText = "Downloading...";
+                    
+                    const fileResp = await gapi.client.drive.files.get({
+                        fileId: fileId,
+                        alt: 'media'
+                    });
+                    
+                    calendarData = fileResp.result;
+                    // Also update local storage just in case
+                    localStorage.setItem('win98_calendar_data', JSON.stringify(calendarData));
+                    renderCalendar();
+                    statusDiv.innerText = "Data Loaded from Cloud.";
+                } else {
+                    statusDiv.innerText = "No save found in Drive.";
+                }
+            } catch (err) {
+                statusDiv.innerText = "Load Error: " + err.message;
+            }
+        }
+
+        // --- 2. CALENDAR LOGIC (Standard) ---
+
         function init() {
-            // Load from storage (Cookies/Local)
+            // Load from Local Storage initially (fast load)
             const saved = localStorage.getItem('win98_calendar_data');
             if (saved) {
-                calendarData = JSON.parse(saved);
+                try {
+                    calendarData = JSON.parse(saved);
+                } catch(e) { calendarData = {}; }
             }
             renderCalendar();
         }
 
-        // --- Calendar Logic ---
         function renderCalendar() {
             daysContainer.innerHTML = "";
             const year = currentDate.getFullYear();
@@ -368,30 +476,22 @@
             const firstDayIndex = new Date(year, month, 1).getDay();
             const lastDay = new Date(year, month + 1, 0).getDate();
 
-            // Empty padding slots
             for (let i = 0; i < firstDayIndex; i++) {
                 const empty = document.createElement('div');
-                empty.style.background = "#ece9d8"; // Match header, visually empty
+                empty.style.background = "#ece9d8";
                 daysContainer.appendChild(empty);
             }
 
-            // Days
             for (let i = 1; i <= lastDay; i++) {
                 const dayDiv = document.createElement('div');
                 dayDiv.classList.add('day');
                 const key = `${year}-${month}-${i}`;
 
-                // Check saved data
                 if (calendarData[key]) {
                     const data = calendarData[key];
-                    if(data.color) {
-                        dayDiv.style.backgroundColor = data.color;
-                    }
+                    if(data.color) dayDiv.style.backgroundColor = data.color;
                     if(data.text) {
-                        dayDiv.innerHTML = `
-                            <div class="day-number">${i}</div>
-                            <div class="day-content">${data.text}</div>
-                        `;
+                        dayDiv.innerHTML = `<div class="day-number">${i}</div><div class="day-content">${data.text}</div>`;
                     } else {
                         dayDiv.innerHTML = `<div class="day-number">${i}</div>`;
                     }
@@ -399,7 +499,6 @@
                     dayDiv.innerHTML = `<div class="day-number">${i}</div>`;
                 }
 
-                // Highlight today
                 const today = new Date();
                 if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
                     dayDiv.classList.add('current-day');
@@ -410,7 +509,7 @@
             }
         }
 
-        // --- Navigation ---
+        // Navigation
         document.getElementById('prevBtn').addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
             renderCalendar();
@@ -420,26 +519,17 @@
             renderCalendar();
         });
 
-        // --- Modal Logic ---
+        // Modal
         function openModal(key, dayNum) {
             selectedDayKey = key;
-            modalDateLabel.innerText = `Edit: ${currentDate.toLocaleString('default', { month: 'long' })} ${dayNum}, ${currentDate.getFullYear()}`;
+            modalDateLabel.innerText = `${currentDate.toLocaleString('default', { month: 'short' })} ${dayNum}`;
             modal.style.display = 'flex';
             
-            // Reset swatches
-            swatches.forEach(s => s.classList.remove('selected'));
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
             
             if (calendarData[key]) {
                 todoInput.value = calendarData[key].text || "";
                 selectedColor = calendarData[key].color || null;
-                
-                // Highlight active color
-                if (selectedColor) {
-                    swatches.forEach(s => {
-                        // rgb to hex comparison is tricky in JS, simplified check:
-                        // We just rely on user clicking.
-                    });
-                }
             } else {
                 todoInput.value = "";
                 selectedColor = null;
@@ -447,14 +537,11 @@
             todoInput.focus();
         }
 
-        function closeModal() {
-            modal.style.display = 'none';
-        }
+        function closeModal() { modal.style.display = 'none'; }
 
         function pickColor(color) {
             selectedColor = color === 'none' ? null : color;
-            // Visual feedback
-            swatches.forEach(s => s.classList.remove('selected'));
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
             event.target.classList.add('selected');
         }
 
@@ -463,20 +550,21 @@
             if (!text && !selectedColor) {
                 delete calendarData[selectedDayKey];
             } else {
-                calendarData[selectedDayKey] = {
-                    text: text,
-                    color: selectedColor
-                };
+                calendarData[selectedDayKey] = { text: text, color: selectedColor };
             }
-            
-            // Save to "Cookies" (LocalStorage)
             localStorage.setItem('win98_calendar_data', JSON.stringify(calendarData));
-            
             renderCalendar();
             closeModal();
+            statusDiv.innerText = "Local saved. Click 'Save Drive' to Sync.";
         }
 
-        init();
+        // Initialize Google Scripts
+        window.onload = function() {
+            init();
+            gapiLoaded();
+            gisLoaded();
+        };
+
     </script>
 </body>
 </html>
