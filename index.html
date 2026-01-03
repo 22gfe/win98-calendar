@@ -75,6 +75,7 @@
             font-size: 11px;
             cursor: pointer;
             min-width: 20px;
+            white-space: nowrap;
         }
 
         .win-btn:active {
@@ -98,10 +99,11 @@
             border-bottom: 1px solid var(--win-light);
             border-right: 1px solid var(--win-light);
             align-items: center;
+            flex-wrap: wrap; /* Allows buttons to wrap on small screens */
         }
         
-        #auth-status { font-size: 11px; flex-grow: 1; }
-        .cloud-btn { width: 80px; }
+        #auth-status { font-size: 11px; flex-grow: 1; min-width: 150px;}
+        .cloud-btn { width: auto; min-width: 70px; }
 
         /* --- Calendar Grid --- */
         .sunken-panel {
@@ -211,10 +213,13 @@
 
         <div class="window-body">
             <div class="status-panel">
-                <div id="auth-status">System Offline. Login to Sync.</div>
+                <div id="auth-status">System Offline.</div>
                 <button id="authBtn" class="win-btn cloud-btn" onclick="handleAuthClick()">Log In</button>
+                
                 <button id="syncBtn" class="win-btn cloud-btn" onclick="syncData()" style="display:none;">Save Drive</button>
                 <button id="loadBtn" class="win-btn cloud-btn" onclick="loadFromDrive()" style="display:none;">Load Drive</button>
+                
+                <button id="localBtn" class="win-btn cloud-btn" onclick="manualLoadLocal()">Load Local</button>
             </div>
 
             <div class="calendar-controls">
@@ -259,13 +264,14 @@
         // ==========================================
         // CONFIGURATION - PASTE YOUR KEYS HERE
         // ==========================================
-        const API_KEY = 'AIzaSyA1iG-C7qXnNDPELEi3mM8vuSGD1btArzg';
+        const API_KEY = 'C7qXnNDPELEi3mM8vuSGD1btArzg';
         const CLIENT_ID = '537716789548-56s3mvpr5js4b0g3g05t01uun4pjoje1.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
         // ==========================================
 
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SAVE_FILE_NAME = 'win98_calendar_data.json';
+        const LOCAL_STORAGE_KEY = 'win98_calendar_data';
 
         let tokenClient;
         let gapiInited = false;
@@ -314,7 +320,7 @@
 
         function maybeEnableButtons() {
             if (gapiInited && gisInited) {
-                statusDiv.innerText = "System Ready. Please Log In.";
+                statusDiv.innerText = "System Ready. Login for Cloud.";
             }
         }
 
@@ -323,12 +329,13 @@
                 if (resp.error !== undefined) {
                     throw (resp);
                 }
-                statusDiv.innerText = "Authenticated. Ready to Sync.";
+                statusDiv.innerText = "Authenticated.";
                 authBtn.style.display = 'none';
                 syncBtn.style.display = 'inline-block';
                 loadBtn.style.display = 'inline-block';
-                // Try to auto load
-                await loadFromDrive(); 
+                
+                // Optional: Auto-load from drive on login
+                // await loadFromDrive(); 
             };
             if (gapi.client.getToken() === null) {
                 tokenClient.requestAccessToken({prompt: 'consent'});
@@ -339,9 +346,8 @@
 
         // --- Drive: Save Logic ---
         async function syncData() {
-            statusDiv.innerText = "Searching Drive...";
+            statusDiv.innerText = "Saving to Cloud...";
             try {
-                // 1. Search for existing file
                 const response = await gapi.client.drive.files.list({
                     q: `name = '${SAVE_FILE_NAME}' and trashed = false`,
                     fields: 'files(id, name)',
@@ -355,21 +361,13 @@
                 };
 
                 if (files && files.length > 0) {
-                    // Update existing
-                    statusDiv.innerText = "Overwriting Cloud Save...";
                     const fileId = files[0].id;
-                    
-                    // Simple update using multipart/related is hard in pure JS client without libs
-                    // We will just use the standard REST upload method
                     await updateFile(fileId, fileContent);
-                    statusDiv.innerText = "Save Complete!";
                 } else {
-                    // Create new
-                    statusDiv.innerText = "Creating New Save File...";
                     await createFile(fileContent);
-                    statusDiv.innerText = "Save Complete!";
                 }
 
+                statusDiv.innerText = "Cloud Save Complete.";
                 setTimeout(() => statusDiv.innerText = "Online.", 3000);
 
             } catch (err) {
@@ -382,12 +380,8 @@
             const boundary = '-------314159265358979323846';
             const delimiter = "\r\n--" + boundary + "\r\n";
             const close_delim = "\r\n--" + boundary + "--";
-
             const contentType = 'application/json';
-            const metadata = {
-                'name': SAVE_FILE_NAME,
-                'mimeType': contentType
-            };
+            const metadata = { 'name': SAVE_FILE_NAME, 'mimeType': contentType };
 
             const multipartRequestBody =
                 delimiter +
@@ -398,32 +392,27 @@
                 content +
                 close_delim;
 
-            const request = gapi.client.request({
+            return gapi.client.request({
                 'path': '/upload/drive/v3/files',
                 'method': 'POST',
                 'params': {'uploadType': 'multipart'},
-                'headers': {
-                    'Content-Type': 'multipart/related; boundary="' + boundary + '"'
-                },
-                'body': multipartRequestBody});
-            
-            return request;
+                'headers': { 'Content-Type': 'multipart/related; boundary="' + boundary + '"' },
+                'body': multipartRequestBody
+            });
         }
 
         async function updateFile(fileId, content) {
-            // For update, we use PATCH
-             const request = gapi.client.request({
+             return gapi.client.request({
                 'path': '/upload/drive/v3/files/' + fileId,
                 'method': 'PATCH',
                 'params': {'uploadType': 'media'},
                 'body': content
             });
-            return request;
         }
 
         // --- Drive: Load Logic ---
         async function loadFromDrive() {
-            statusDiv.innerText = "Checking Drive for saves...";
+            statusDiv.innerText = "Searching Drive...";
             try {
                 const response = await gapi.client.drive.files.list({
                     q: `name = '${SAVE_FILE_NAME}' and trashed = false`,
@@ -441,29 +430,41 @@
                     });
                     
                     calendarData = fileResp.result;
-                    // Also update local storage just in case
-                    localStorage.setItem('win98_calendar_data', JSON.stringify(calendarData));
+                    // Note: We do NOT auto-save to local storage here to prevent overwriting
+                    // local data unless user explicitly saves an entry. 
                     renderCalendar();
                     statusDiv.innerText = "Data Loaded from Cloud.";
                 } else {
-                    statusDiv.innerText = "No save found in Drive.";
+                    statusDiv.innerText = "No Cloud Save Found.";
                 }
             } catch (err) {
                 statusDiv.innerText = "Load Error: " + err.message;
             }
         }
 
-        // --- 2. CALENDAR LOGIC (Standard) ---
-
-        function init() {
-            // Load from Local Storage initially (fast load)
-            const saved = localStorage.getItem('win98_calendar_data');
+        // --- 2. LOCAL STORAGE LOGIC ---
+        
+        function manualLoadLocal() {
+            const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (saved) {
                 try {
                     calendarData = JSON.parse(saved);
-                } catch(e) { calendarData = {}; }
+                    renderCalendar();
+                    statusDiv.innerText = "Loaded from Local Storage.";
+                } catch(e) { 
+                    statusDiv.innerText = "Local Data Corrupt.";
+                    calendarData = {};
+                }
+            } else {
+                statusDiv.innerText = "No Local Data Found.";
             }
-            renderCalendar();
+        }
+
+        // --- 3. CALENDAR UI LOGIC ---
+
+        function init() {
+            // Auto-load local on startup
+            manualLoadLocal();
         }
 
         function renderCalendar() {
@@ -552,10 +553,13 @@
             } else {
                 calendarData[selectedDayKey] = { text: text, color: selectedColor };
             }
-            localStorage.setItem('win98_calendar_data', JSON.stringify(calendarData));
+            
+            // ALWAYS save to local storage when editing
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(calendarData));
+            
             renderCalendar();
             closeModal();
-            statusDiv.innerText = "Local saved. Click 'Save Drive' to Sync.";
+            statusDiv.innerText = "Saved locally. Remember to Sync.";
         }
 
         // Initialize Google Scripts
